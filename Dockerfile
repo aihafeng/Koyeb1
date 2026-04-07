@@ -1,22 +1,49 @@
 FROM nginx:latest
 
-# ✅ 必须用 8080（平台要求）
-EXPOSE 8080
-
 WORKDIR /app
 USER root
+
+EXPOSE 8080
 
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY entrypoint.sh ./
 
-RUN apt-get update && apt-get install -y wget unzip iproute2 && \
-    # ✅ 先用官方源，失败再用备用源（防炸）
-    (wget -O temp.zip https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip || \
-     wget -O temp.zip https://gh.llkk.cc/https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip) && \
+RUN apt-get update && apt-get install -y wget unzip && \
+    wget -O temp.zip https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip && \
     unzip temp.zip v2ray geoip.dat geosite.dat && \
     mv v2ray v && \
     rm -f temp.zip && \
-    chmod 755 v entrypoint.sh && \
-    echo 'ewogICAgImxvZyI6ewogICAgICAgICJsb2dsZXZlbCI6Indhcm5pbmciLAogICAgICAgICJhY2Nlc3MiOiIvZGV2L251bGwiLAogICAgICAgICJlcnJvciI6Ii9kZXYvbnVsbCIKICAgIH0sCiAgICAiaW5ib3VuZHMiOlsKICAgICAgICB7CiAgICAgICAgICAgICJwb3J0IjoxMDAwMCwKICAgICAgICAgICAgInByb3RvY29sIjoidm1lc3MiLAogICAgICAgICAgICAibGlzdGVuIjoiMTI3LjAuMC4xIiwKICAgICAgICAgICAgInNldHRpbmdzIjp7CiAgICAgICAgICAgICAgICAiY2xpZW50cyI6WwogICAgICAgICAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgICAgICAgICAgImlkIjoiVVVJRCIsCiAgICAgICAgICAgICAgICAgICAgICAgICJhbHRlcklkIjowCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9LAogICAgICAgICAgICAic3RyZWFtU2V0dGluZ3MiOnsKICAgICAgICAgICAgICAgICJuZXR3b3JrIjoid3MiLAogICAgICAgICAgICAgICAgIndzU2V0dGluZ3MiOnsKICAgICAgICAgICAgICAgICAgICAicGF0aCI6Ii92bWVzcyIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgICAicG9ydCI6MjAwMDAsCiAgICAgICAgICAgICJwcm90b2NvbCI6InZsZXNzIiwKICAgICAgICAgICAgImxpc3RlbiI6IjEyNy4wLjAuMSIsCiAgICAgICAgICAgICJzZXR0aW5ncyI6ewogICAgICAgICAgICAgICAgImNsaWVudHMiOlsKICAgICAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgICAgICJpZCI6IlVVSUQiCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgXSwKICAgICAgICAgICAgICAgICJkZWNyeXB0aW9uIjoibm9uZSIKICAgICAgICAgICAgfSwKICAgICAgICAgICAgInN0cmVhbVNldHRpbmdzIjp7CiAgICAgICAgICAgICAgICAibmV0d29yayI6IndzIiwKICAgICAgICAgICAgICAgICJ3c1NldHRpbmdzIjp7CiAgICAgICAgICAgICAgICAgICAgInBhdGgiOiIvdmxlc3MiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICBdLAogICAgIm91dGJvdW5kcyI6WwogICAgICAgIHsKICAgICAgICAgICAgInByb3RvY29sIjoiZnJlZWRvbSIsCiAgICAgICAgICAgICJzZXR0aW5ncyI6e30KICAgICAgICB9CiAgICBdLAogICAgImRucyI6ewogICAgICAgICJzZXJ2ZXJzIjpbIjguOC44LjgiLCI4LjguNC40IiwibG9jYWxob3N0Il0KICAgIH0KfQ==' > config
+    chmod +x v entrypoint.sh && \
+    echo '{
+  "log":{"loglevel":"warning"},
+  "inbounds":[
+    {
+      "port":10000,
+      "protocol":"vmess",
+      "listen":"127.0.0.1",
+      "settings":{
+        "clients":[{"id":"7a5b9b7d-5f29-4a72-ac79-d19a22fba644","alterId":0}]
+      },
+      "streamSettings":{
+        "network":"ws",
+        "wsSettings":{"path":"/vmess"}
+      }
+    },
+    {
+      "port":20000,
+      "protocol":"vless",
+      "listen":"127.0.0.1",
+      "settings":{
+        "clients":[{"id":"7a5b9b7d-5f29-4a72-ac79-d19a22fba644"}],
+        "decryption":"none"
+      },
+      "streamSettings":{
+        "network":"ws",
+        "wsSettings":{"path":"/vless"}
+      }
+    }
+  ],
+  "outbounds":[{"protocol":"freedom"}]
+}' > config.json
 
 ENTRYPOINT ["./entrypoint.sh"]
