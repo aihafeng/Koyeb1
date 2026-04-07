@@ -1,64 +1,24 @@
-FROM nginx:latest
+server {
+    listen 80;
+    listen [::]:80;
 
-WORKDIR /app
-USER root
+    server_name _;
 
-EXPOSE 8080
-
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY entrypoint.sh ./
-
-RUN apt-get update && apt-get install -y wget unzip && \
-    wget -O temp.zip https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip && \
-    unzip temp.zip v2ray geoip.dat geosite.dat && \
-    mv v2ray v && \
-    rm -f temp.zip && \
-    chmod +x v entrypoint.sh
-
-# ✅ 用 cat 写配置（不会报错）
-RUN cat > /app/config.json << 'EOF'
-{
-  "log": { "loglevel": "warning" },
-  "inbounds": [
-    {
-      "port": 10000,
-      "protocol": "vmess",
-      "listen": "127.0.0.1",
-      "settings": {
-        "clients": [
-          {
-            "id": "7a5b9b7d-5f29-4a72-ac79-d19a22fba644",
-            "alterId": 0
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/vmess" }
-      }
-    },
-    {
-      "port": 20000,
-      "protocol": "vless",
-      "listen": "127.0.0.1",
-      "settings": {
-        "clients": [
-          {
-            "id": "7a5b9b7d-5f29-4a72-ac79-d19a22fba644"
-          }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/vless" }
-      }
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
     }
-  ],
-  "outbounds": [
-    { "protocol": "freedom" }
-  ]
-}
-EOF
 
-ENTRYPOINT ["./entrypoint.sh"]
+    location /vmess {
+        proxy_pass http://127.0.0.1:10000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+
+    location /sub {
+        default_type text/plain;
+        return 200 "dm1lc3M6Ly9leUoySWpvaU1pSXNJbkJ6SWpvaVlYQndiSGtnWW5WcGJHUXZkbTBpTENKaFpHUWlPaUptWlc1bloxQXVZWEJ3YkhrdVluVnBiR1FpTENKd2IzSjBJam9pT0RBaUxDSnBaQ0k2SWpkaE5XSTVZamRrTFRWbU1qa3ROR0UzTWkxaFkyYzVMV1F4T1dFeU1tWmlZVFl6TkRRaUxDSmhhV1FpT2lJd0lpd2ljMk41SWpvaVlYVjBiMElpTENKdVpYUWlPaUp6SWl3aWRIbHdaU0k2SW01dmJtVWlMQ0pvYjNOMElqb2labVZ1WjJjdVlYQndiSGt1WW5WcGJHUXVZWEJ3YkhrdVluVnBiR1FpTENKd1lYUm9Jam9pTDNadFpYTnpJaXdpZEhSeklqb2lJaXdpYzI1cElqb2lJaXdpWVd4d2JpSTZJaUlzSW1sdWMyVmpkWEpsSWpvaU1DSjk=";
+    }
+}
